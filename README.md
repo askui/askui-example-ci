@@ -1,2 +1,2 @@
 # askui-ci
-All the pipelines for your AskUI
+All the CI/CD pipelines for your AskUI integrations.
