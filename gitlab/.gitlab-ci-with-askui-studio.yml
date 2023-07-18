@@ -1,0 +1,116 @@
+stages:          # List of stages for jobs and their order of execution
+  - test
+  - deploy
+
+test-job:
+  image: docker
+  stage: test
+  services: 
+    - docker:dind
+  before_script:
+    - docker info
+    - echo "$DOCKER_PASSWORD" | docker login --username $DOCKER_USERNAME --password-stdin
+  script:
+    - |
+      cat << EOF > config.yaml
+          access_token: $ASKUI_TOKEN
+          inference_server_url: $ASKUI_INFERENCE_SERVER_URL
+          workspace_id: $ASKUI_WORKSPACE_ID
+          workflow_endpoint:
+              prefixes:
+                  - workspaces/${ASKUI_WORKSPACE_ID}/test-cases
+              url: ${ASKUI_WORKFLOW_ENDPOINT_URL}/workspaces/${ASKUI_WORKSPACE_ID}/objects            
+      EOF
+    - docker run --shm-size="2g" --rm -v ./config.yaml:/home/askui/config.yaml -v ./allure-results:/home/askui/test_project/allure-results askuigmbh/askui-runner:v0.13.1-github
+  artifacts:
+    paths:
+    - allure-results
+    expire_in: 1 week
+  variables:
+    ASKUI_WORKSPACE_ID: $ASKUI_WORKSPACE_ID
+    ASKUI_TOKEN: $ASKUI_TOKEN
+    ASKUI_INFERENCE_SERVER_URL: $ASKUI_INFERENCE_SERVER_URL
+    UI_CONTROLLER_URL: $UI_CONTROLLER_URL
+    DOCKER_PASSWORD: $DOCKER_PASSWORD
+    DOCKER_USERNAME: $DOCKER_USERNAME
+  only:
+    - main
+
+# Use this if you can NOT use Access Tokens
+# With your Gitlab plan:
+#  Generates an allure report
+#  Moves it to history/
+generate-allure-report:
+  image: pradapjackie/allure-reports-generation:1.0
+  stage: test
+  script:
+    - echo "Starting Allure report generation"
+    - REPORT=job_${CI_JOB_ID}
+    - echo "Report ${REPORT}"
+    - allure generate allure-results -o allure-report
+    - echo "Report generated in allure-report/"
+    - mv allure-report history
+  artifacts:
+    paths:
+    - history/
+    expire_in: 1 week
+  needs:
+    - test-job
+  when: always
+
+# Use this if you can use Access Tokens
+# With your Gitlab plan:
+#   Change the dependencies property in the pages job
+#   Remove the when: manual property at the end of the job
+commit-allure-report-to-history-branch:
+  image: pradapjackie/allure-reports-generation:1.0
+  stage: test
+  script:
+    - git clone --single-branch --branch gl-pages $CI_PROJECT_URL
+
+    - REPORT=job_${CI_JOB_ID}
+    - CURRENT_BRANCH=${CI_PROJECT_NAME}/public/${CI_COMMIT_REF_NAME}
+    - echo $CURRENT_BRANCH
+    - cp -r ./${CURRENT_BRANCH}/history allure-results || echo "No history"
+
+    - echo '{"name":"GitLabCI","type":"gitlab","reportName":"Allure Report with history",' > executor.json
+    - echo "\"reportUrl\":\"${CI_PAGES_URL}/${CI_COMMIT_REF_NAME}/${REPORT}/\"," >> executor.json
+    - echo "\"buildUrl\":\"${CI_PIPELINE_URL}\"," >> executor.json
+    - echo "\"buildName\":\"GitLab Job Run ${CI_JOB_ID}\",\"buildOrder\":\"${CI_JOB_ID}\"}" >> executor.json
+    - mv ./executor.json ./allure-results
+
+    - allure generate allure-results -o $REPORT
+
+    - mkdir -p $CURRENT_BRANCH
+    - cp -r $REPORT $CURRENT_BRANCH
+    - cp -r ${REPORT}/history $CURRENT_BRANCH
+    - cp -r generate_index.py $CI_PROJECT_NAME
+    - cd $CI_PROJECT_NAME
+    - python3 generate_index.py public
+    - python3 generate_index.py public/${CI_COMMIT_REF_NAME}
+
+    - git config user.name "Gitlab Runner"
+    - git config user.email ${CI_EMAIL}
+    - >
+      git remote add $CI_PROJECT_NAME 
+      https://oauth2:${GITLAB_ACCESS_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git
+    - git add ./public
+    - git commit -m "pipeline_${CI_PIPELINE_ID}_job_${CI_JOB_ID}"
+    - git push -u $CI_PROJECT_NAME
+  artifacts:
+    paths:
+    - history/
+    expire_in: 1 week
+  needs:
+    - test-job
+  when: manual
+
+pages:
+  stage: deploy
+  script:
+    - mv history/ public/
+  artifacts:
+    paths:
+      - public
+  dependencies:
+    - generate-allure-report
