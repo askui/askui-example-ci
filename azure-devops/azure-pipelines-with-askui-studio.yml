@@ -1,28 +1,43 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
 trigger:
-- main
+- master
 
-pool:
-  vmImage: 'ubuntu-latest'
-
-steps:
-- task: NodeTool@0
-  inputs:
-    versionSpec: '16.x'
-  displayName: 'Install Node.js'
-
-- script: |
-    npm install
-  displayName: 'npm install'
-
-- script: |
-    npm test
-  env:
-    ASKUI_WORKSPACE_ID: $(ASKUI_WORKSPACE_ID)
-    ASKUI_TOKEN: $(ASKUI_TOKEN)
-    ASKUI_INFERENCE_SERVER_URL: $(ASKUI_INFERENCE_SERVER_URL)
-  displayName: 'npm build'
-
-# TODO
-# Where to store the history?
-# Generate the allure report from the allure-result directory
-# Publish it with Allure Test Reports?
+jobs:
+  - job: RunAskUI
+    continueOnError: true
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+      - task: DockerInstaller@0
+        inputs:
+          dockerVersion: '17.09.0-ce'
+      - bash: |
+          cat << EOF > config.yaml
+              access_token: $(ASKUI_TOKEN)
+              inference_server_url: $(ASKUI_INFERENCE_SERVER_URL)
+              workspace_id: $(ASKUI_WORKSPACE_ID)
+              workflow_endpoint:
+                  prefixes:
+                      - workspaces/$(ASKUI_WORKSPACE_ID)/test-cases
+                  url: $(ASKUI_WORKFLOW_ENDPOINT_URL)/workspaces/$(ASKUI_WORKSPACE_ID)/objects
+          EOF
+        - docker run --shm-size="2g" --rm -v ./config.yaml:/home/askui/config.yaml -v ./allure-results:/home/askui/test_project/allure-results askuigmbh/askui-runner:v0.13.1-github
+        displayName: 'Run AskUI'
+  - job: GenerateAllureReport
+    pool:
+      vmImage: ubuntu-latest
+    container:
+      pradapjackie/allure-reports-generation:1.0
+    steps:
+      - bash: |
+          allure generate allure-results -o allure-report
+          mv allure-report history
+      # Install https://github.com/mclay/azure-pipeline-allure-report first
+      - task: PublishAllureReport@1
+        displayName: 'Publish Allure Report'
+        inputs:
+          reportDir: 'history'
