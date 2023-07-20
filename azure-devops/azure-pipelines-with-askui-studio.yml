@@ -1,14 +1,9 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
-trigger:
+rigger:
 - master
 
 jobs:
   - job: RunAskUI
-    continueOnError: true
+    continueOnError: false
     pool:
       vmImage: ubuntu-latest
     steps:
@@ -25,19 +20,17 @@ jobs:
                       - workspaces/$(ASKUI_WORKSPACE_ID)/test-cases
                   url: $(ASKUI_WORKFLOW_ENDPOINT_URL)/workspaces/$(ASKUI_WORKSPACE_ID)/objects
           EOF
-        - docker run --shm-size="2g" --rm -v ./config.yaml:/home/askui/config.yaml -v ./allure-results:/home/askui/test_project/allure-results askuigmbh/askui-runner:v0.13.1-github
+          echo "$(DOCKER_PASSWORD)" | docker login --username $(DOCKER_USERNAME) --password-stdin
+          docker run --shm-size="2g" --rm -v "/$(pwd)/config.yaml:/home/askui/config.yaml" -v "/$(pwd)/allure-results:/home/askui/test_project/allure-results" askuigmbh/askui-runner:v0.13.1-github
         displayName: 'Run AskUI'
-  - job: GenerateAllureReport
-    pool:
-      vmImage: ubuntu-latest
-    container:
-      pradapjackie/allure-reports-generation:1.0
-    steps:
       - bash: |
-          allure generate allure-results -o allure-report
-          mv allure-report history
+          curl -o allure-commandline-2.10.0.tgz -OLs https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.10.0/allure-commandline-2.10.0.tgz
+          sudo tar -zxf allure-commandline-2.10.0.tgz -C .
+          echo "Creating allure-report"
+          ./allure-2.10.0/bin/allure generate allure-results -o allure-report
+          echo "allure-report created"
       # Install https://github.com/mclay/azure-pipeline-allure-report first
       - task: PublishAllureReport@1
         displayName: 'Publish Allure Report'
         inputs:
-          reportDir: 'history'
+          reportDir: 'allure-report'

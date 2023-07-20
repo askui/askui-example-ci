@@ -1,38 +1,41 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
 - master
 
 jobs:
   - job: RunAskUI
-    continueOnError: true
+    continueOnError: false
     pool:
       vmImage: ubuntu-latest
     steps:
+      - task: DockerInstaller@0
+        inputs:
+          dockerVersion: '17.09.0-ce'
       - task: NodeTool@0
         inputs:
           versionSpec: '16.x'
         displayName: 'Install Node.js'
       - bash: |
+          sudo ufw disable
+          echo 'Start UIController'
+          docker run -d -p 6769:6769 --cidfile container.cid askuigmbh/askui-ui-controller:v0.11.2-chrome-100.0.4896.60-amd64
+          echo 'Run npm install'
+          npm install
           echo 'Run npm install'
           npm install
           echo 'Run AskUI'
+          export ASKUI_TOKEN=$(ASKUI_TOKEN)
+          export ASKUI_WORKSPACE_ID=$(ASKUI_WORKSPACE_ID)
           npm run test
+        continueOnError: true
         displayName: 'Run AskUI'
-  - job: GenerateAllureReport
-    pool:
-      vmImage: ubuntu-latest
-    container:
-      pradapjackie/allure-reports-generation:1.0
-    steps:
       - bash: |
-          allure generate allure-results -o allure-report
-          mv allure-report history
+          curl -o allure-commandline-2.10.0.tgz -OLs https://repo.maven.apache.org/maven2/io/qameta/allure/allure-commandline/2.10.0/allure-commandline-2.10.0.tgz
+          sudo tar -zxf allure-commandline-2.10.0.tgz -C .
+          echo "Creating allure-report"
+          ./allure-2.10.0/bin/allure generate allure-results -o allure-report
+          echo "allure-report created"
       # Install https://github.com/mclay/azure-pipeline-allure-report first
       - task: PublishAllureReport@1
         displayName: 'Publish Allure Report'
         inputs:
-          reportDir: 'history'
+          reportDir: 'allure-report'
