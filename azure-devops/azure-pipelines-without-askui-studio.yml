@@ -20,8 +20,6 @@ jobs:
           docker run -d -p 6769:6769 --cidfile container.cid askuigmbh/askui-ui-controller:v0.11.2-chrome-100.0.4896.60-amd64
           echo 'Run npm install'
           npm install
-          echo 'Run npm install'
-          npm install
           echo 'Run AskUI'
           export ASKUI_TOKEN=$(ASKUI_TOKEN)
           export ASKUI_WORKSPACE_ID=$(ASKUI_WORKSPACE_ID)
