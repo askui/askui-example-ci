@@ -1,0 +1,34 @@
+# ** Gitlab CI-Pipeline for Multiple Devices on Windows **
+# 
+# Pre-Conditions
+#  - GilabRunner on Windows with shell powershell
+#  - adb is in PATH variable available
+#  - askui-ui-controller.exe is in PATH variable available
+#
+stages:          # List of stages for jobs and their order of execution
+  - build
+  - test
+
+build-job:
+  stage: build
+  image: node
+  script:
+    - npm install
+  only:
+    - main
+
+test-job:
+  stage: test
+  tags:
+    - windows # Windows powershell Runner https://docs.gitlab.com/runner/shells/
+  before_script:
+    - adb devices # Lists all available android devices
+    - askui-ui-controller.exe -d 0 -m -r android -p 6769 # Start AskUI Controller for device 0 on port 6769
+    - askui-ui-controller.exe -d 1 -m -r android -p 6869 # Start AskUI Controller for device 1 on port 6869
+  script:
+    - npm test || true
+  variables:
+    ASKUI_WORKSPACE_ID: $ASKUI_WORKSPACE_ID
+    ASKUI_TOKEN: $ASKUI_TOKEN
+  needs:
+    - build-job
