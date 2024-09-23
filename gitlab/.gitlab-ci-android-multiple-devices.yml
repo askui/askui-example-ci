@@ -2,8 +2,8 @@
 # 
 # Pre-Conditions
 #  - GilabRunner on Windows with shell powershell
-#  - adb is in PATH variable available
-#  - askui-ui-controller.exe is in PATH variable available
+#  - adb is available in PATH variable
+#  - askui-ui-controller.exe is available in PATH variable
 #
 stages:          # List of stages for jobs and their order of execution
   - build
@@ -26,7 +26,7 @@ test-job:
     - askui-ui-controller.exe -d 0 -m -r android -p 6769 # Start AskUI Controller for device 0 on port 6769
     - askui-ui-controller.exe -d 1 -m -r android -p 6869 # Start AskUI Controller for device 1 on port 6869
   script:
-    - npm test || true
+    - npm run askui || true
   variables:
     ASKUI_WORKSPACE_ID: $ASKUI_WORKSPACE_ID
     ASKUI_TOKEN: $ASKUI_TOKEN
