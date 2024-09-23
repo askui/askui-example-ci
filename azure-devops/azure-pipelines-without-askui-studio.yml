@@ -23,7 +23,7 @@ jobs:
           echo 'Run AskUI'
           export ASKUI_TOKEN=$(ASKUI_TOKEN)
           export ASKUI_WORKSPACE_ID=$(ASKUI_WORKSPACE_ID)
-          npm run test
+          npm run askui
         continueOnError: true
         displayName: 'Run AskUI'
       - bash: |
