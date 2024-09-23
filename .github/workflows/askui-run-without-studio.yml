@@ -17,8 +17,8 @@ jobs:
           node-version: 16.x
       - name: Install dependencies
         run: npm install
-      - name: Run tests
-        run: npm test
+      - name: Run askui
+        run: npm run askui
         env:
           ASKUI_WORKSPACE_ID: ${{ secrets.ASKUI_WORKSPACE_ID }}
           ASKUI_TOKEN: ${{ secrets.ASKUI_TOKEN }}
