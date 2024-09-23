@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       ui-controller:
-        image: askuigmbh/askui-ui-controller:v0.11.2-chrome-100.0.4896.60-amd64
+        image: askuigmbh/askui-ui-controller:0.11.2-chrome-129.0-amd64
         ports:
           - 6769:6769
     steps:
