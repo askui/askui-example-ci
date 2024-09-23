@@ -28,7 +28,7 @@ build-job:
 test-job:
   stage: test
   script:
-    - npm test || true
+    - npm askui || true
   artifacts:
     paths:
     - allure-results
