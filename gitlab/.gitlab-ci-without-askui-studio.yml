@@ -4,7 +4,7 @@ stages:          # List of stages for jobs and their order of execution
   - deploy
 
 services:
-  - name: askuigmbh/askui-ui-controller:v0.11.2-chrome-100.0.4896.60-amd64
+  - name: askuigmbh/askui-ui-controller:0.11.2-chrome-129.0-amd64
     command: ["--port","6769"]
     alias: uicontroller
 
