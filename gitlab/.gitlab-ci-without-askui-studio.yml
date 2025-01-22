@@ -1,51 +1,87 @@
-stages:          # List of stages for jobs and their order of execution
+stages:          
   - build
   - test
   - deploy
 
-services:
-  - name: askuigmbh/askui-ui-controller:0.11.2-chrome-129.0-amd64
-    command: ["--port","6769"]
-    alias: uicontroller
-
 default:
   image: node:latest
-  cache:  # Cache modules in between jobs
+  cache:
     key: $CI_COMMIT_REF_SLUG
     paths:
       - .npm/
-  before_script:
-    - npm ci --cache .npm --prefer-offline || true
 
 build-job:
   stage: build
   image: node
   script:
     - npm install
+  artifacts:
+    paths:
+      - node_modules
   only:
     - main
 
 test-job:
   stage: test
+  services:
+    - name: askuigmbh/askui-ui-controller:0.11.2-chrome-129.0-amd64
+      alias: uicontroller
+  before_script:
+    - npm ci --cache .npm --prefer-offline || true
+    # Create base directory
+    - mkdir -p "/root/.askui/SnippingTool/AIElement/${ASKUI_WORKSPACE_ID}"
+    # Create JSON file
+    - |
+      echo '{
+        "version": 1,
+        "id": "{31444F59-104F-4431-9288-42047F712A11}",
+        "creationDateTime": "2024-12-17T12:27:23.763714Z",
+        "image": {
+          "size": {
+            "width": 113,
+            "height": 88
+          }
+        },
+        "name": "cart1",
+        "workspaceId": "'${ASKUI_WORKSPACE_ID}'"
+      }' > "/root/.askui/SnippingTool/AIElement/${ASKUI_WORKSPACE_ID}/{31444F59-104F-4431-9288-42047F712A11}.json"
+    # Create .env file
+    - |
+      cat << EOF > .env
+      standardUserName=$standardUserName
+      commonPassword=$commonPassword
+      lockedUserName=$lockedUserName
+      errorUser=$errorUser
+      problemUser=$problemUser
+      glitchUser=$glitchUser
+      EOF
   script:
-    - npm askui || true
+    - npm run askui || true 
+    - npm install jest @types/jest ts-jest --save-dev  
+    - npm install mocha @types/mocha --save-dev        
   artifacts:
+    when: always
     paths:
-    - allure-results
+      - allure-results
+      - .env
+      - /root/.askui
     expire_in: 1 week
   variables:
     ASKUI_WORKSPACE_ID: $ASKUI_WORKSPACE_ID
     ASKUI_TOKEN: $ASKUI_TOKEN
     ASKUI_INFERENCE_SERVER_URL: $ASKUI_INFERENCE_SERVER_URL
-    UI_CONTROLLER_URL: $UI_CONTROLLER_URL
+    UI_CONTROLLER_URL: "http://uicontroller:6769"
+    standardUserName: $standardUserName
+    commonPassword: $commonPassword
+    lockedUserName: $lockedUserName
+    errorUser: $errorUser
+    problemUser: $problemUser
+    glitchUser: $glitchUser
   needs:
     - build-job
   only:
     - main
 
-# Use this if you can NOT use Access Tokens
-# With your Gitlab plan:
-#  Generates an allure report and 
 generate-allure-report:
   image: pradapjackie/allure-reports-generation:1.0
   stage: test
@@ -54,6 +90,7 @@ generate-allure-report:
     - allure generate allure-results -o allure-report
     - mv allure-report history
   artifacts:
+    when: always
     paths:
     - history/
     expire_in: 1 week
@@ -61,59 +98,14 @@ generate-allure-report:
     - test-job
   when: always
 
-# Use this if you can use Access Tokens
-# With your Gitlab plan:
-#   Change the dependencies property in the pages job
-#   Remove the when: manual property at the end of the job
-commit-allure-report-to-history-branch:
-  image: pradapjackie/allure-reports-generation:1.0
-  stage: test
-  script:
-    - git clone --single-branch --branch gl-pages $CI_PROJECT_URL
-
-    - REPORT=job_${CI_JOB_ID}
-    - CURRENT_BRANCH=${CI_PROJECT_NAME}/public/${CI_COMMIT_REF_NAME}
-    - echo $CURRENT_BRANCH
-    - cp -r ./${CURRENT_BRANCH}/history allure-results || echo "No history"
-
-    - echo '{"name":"GitLabCI","type":"gitlab","reportName":"Allure Report with history",' > executor.json
-    - echo "\"reportUrl\":\"${CI_PAGES_URL}/${CI_COMMIT_REF_NAME}/${REPORT}/\"," >> executor.json
-    - echo "\"buildUrl\":\"${CI_PIPELINE_URL}\"," >> executor.json
-    - echo "\"buildName\":\"GitLab Job Run ${CI_JOB_ID}\",\"buildOrder\":\"${CI_JOB_ID}\"}" >> executor.json
-    - mv ./executor.json ./allure-results
-
-    - allure generate allure-results -o $REPORT
-
-    - mkdir -p $CURRENT_BRANCH
-    - cp -r $REPORT $CURRENT_BRANCH
-    - cp -r ${REPORT}/history $CURRENT_BRANCH
-    - cp -r generate_index.py $CI_PROJECT_NAME
-    - cd $CI_PROJECT_NAME
-    - python3 generate_index.py public
-    - python3 generate_index.py public/${CI_COMMIT_REF_NAME}
-
-    - git config user.name "Gitlab Runner"
-    - git config user.email ${CI_EMAIL}
-    - >
-      git remote add $CI_PROJECT_NAME 
-      https://oauth2:${GITLAB_ACCESS_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git
-    - git add ./public
-    - git commit -m "pipeline_${CI_PIPELINE_ID}_job_${CI_JOB_ID}"
-    - git push -u $CI_PROJECT_NAME
-  artifacts:
-    paths:
-    - history/
-    expire_in: 1 week
-  needs:
-    - test-job
-  when: manual
-
 pages:
   stage: deploy
   script:
     - mv history/ public/
   artifacts:
+    when: always
     paths:
       - public
   dependencies:
     - generate-allure-report
+  when: always
