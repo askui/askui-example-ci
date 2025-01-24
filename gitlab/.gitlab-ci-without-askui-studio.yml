@@ -33,15 +33,6 @@ test-job:
     # Create JSON file
     - cp -r "./askui/SnippingTool/AIElement/${ASKUI_WORKSPACE_ID}" "/root/.askui/SnippingTool/AIElement/${ASKUI_WORKSPACE_ID}"
     # Create .env file
-    - |
-      cat << EOF > .env
-      standardUserName=$standardUserName
-      commonPassword=$commonPassword
-      lockedUserName=$lockedUserName
-      errorUser=$errorUser
-      problemUser=$problemUser
-      glitchUser=$glitchUser
-      EOF
   script:
     - npm run askui || true 
     - npm install jest @types/jest ts-jest --save-dev  
