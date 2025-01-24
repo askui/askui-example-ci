@@ -58,12 +58,6 @@ test-job:
     ASKUI_TOKEN: $ASKUI_TOKEN
     ASKUI_INFERENCE_SERVER_URL: $ASKUI_INFERENCE_SERVER_URL
     UI_CONTROLLER_URL: "http://uicontroller:6769"
-    standardUserName: $standardUserName
-    commonPassword: $commonPassword
-    lockedUserName: $lockedUserName
-    errorUser: $errorUser
-    problemUser: $problemUser
-    glitchUser: $glitchUser
   needs:
     - build-job
   only:
