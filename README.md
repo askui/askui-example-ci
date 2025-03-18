@@ -2,10 +2,10 @@
 All the CI/CD pipeline examples for your AskUI integrations.
 
 ## 🐙 GitHub
-* [Without AskUI Studio](.github/workflows/askui-run-without-studio.yml)
+* [Typescript](.github/workflows/askui-run-typescript.yml)
 
 ## 🦊 Gitlab
-* [Without AskUI Studio](./gitlab/.gitlab-ci-without-askui-studio.yml)
+* [Typescript](./gitlab/.gitlab-ci-without-askui-studio.yml)
 * [Windows Android Multiple Devices](./gitlab/.gitlab-ci-android-multiple-devices.yml)
 
 ## 🌊 Azure
