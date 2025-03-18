@@ -1,4 +1,4 @@
-name: AskUI Run without Studio
+name: AskUI Run Typescript
 on:
   workflow_dispatch:
 jobs:
@@ -6,15 +6,15 @@ jobs:
     runs-on: ubuntu-latest
     services:
       ui-controller:
-        image: askuigmbh/askui-ui-controller:0.11.2-chrome-129.0-amd64
+        image: askuigmbh/askui-ui-controller:24.12.1-chrome-125.0-amd64
         ports:
           - 6769:6769
     steps:
       - uses: actions/checkout@v3
-      - name: Use Node.js 16.x
+      - name: Use Node.js 20.x
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 20.x
       - name: Install dependencies
         run: npm install
       - name: Run askui
